@@ -316,3 +316,77 @@ func TestInjectFileAppendSkipsIfAlreadyPresent(t *testing.T) {
 		t.Fatal("second Inject() changed = true — SDD orchestrator was duplicated")
 	}
 }
+
+func TestInjectFileAppendSkipsLegacyHeading(t *testing.T) {
+	home := t.TempDir()
+
+	cursorAdapter, err := agents.NewAdapter("cursor")
+	if err != nil {
+		t.Fatalf("NewAdapter(cursor) error = %v", err)
+	}
+
+	promptPath := cursorAdapter.SystemPromptFile(home)
+	if err := os.MkdirAll(filepath.Dir(promptPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	existing := "# Existing\n\n## Spec-Driven Development (SDD) Orchestrator\nAlready present.\n"
+	if err := os.WriteFile(promptPath, []byte(existing), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	result, injectErr := Inject(home, cursorAdapter)
+	if injectErr != nil {
+		t.Fatalf("Inject() error = %v", injectErr)
+	}
+	if len(result.Files) == 0 {
+		t.Fatal("Inject() returned no files")
+	}
+
+	content, readErr := os.ReadFile(promptPath)
+	if readErr != nil {
+		t.Fatalf("ReadFile() error = %v", readErr)
+	}
+
+	text := string(content)
+	if strings.Count(text, "## Spec-Driven Development (SDD) Orchestrator") != 1 {
+		t.Fatal("legacy SDD heading duplicated")
+	}
+}
+
+func TestInjectFileAppendSkipsAgentTeamsHeading(t *testing.T) {
+	home := t.TempDir()
+
+	cursorAdapter, err := agents.NewAdapter("cursor")
+	if err != nil {
+		t.Fatalf("NewAdapter(cursor) error = %v", err)
+	}
+
+	promptPath := cursorAdapter.SystemPromptFile(home)
+	if err := os.MkdirAll(filepath.Dir(promptPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	existing := "# Existing\n\n## Agent Teams Orchestrator\nAlready present.\n"
+	if err := os.WriteFile(promptPath, []byte(existing), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	result, injectErr := Inject(home, cursorAdapter)
+	if injectErr != nil {
+		t.Fatalf("Inject() error = %v", injectErr)
+	}
+	if len(result.Files) == 0 {
+		t.Fatal("Inject() returned no files")
+	}
+
+	content, readErr := os.ReadFile(promptPath)
+	if readErr != nil {
+		t.Fatalf("ReadFile() error = %v", readErr)
+	}
+
+	text := string(content)
+	if strings.Count(text, "## Agent Teams Orchestrator") != 1 {
+		t.Fatal("agent teams heading duplicated")
+	}
+}

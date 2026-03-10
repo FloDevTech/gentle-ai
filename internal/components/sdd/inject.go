@@ -202,9 +202,23 @@ func mergeJSONFile(path string, overlay []byte) (filemerge.WriteResult, error) {
 	return filemerge.WriteFileAtomic(path, merged, 0o644)
 }
 
-// sddOrchestratorMarker is used to detect if SDD content was already injected
-// (e.g., via the persona file or a previous SDD injection).
-const sddOrchestratorMarker = "## Spec-Driven Development (SDD) Orchestrator"
+// sddOrchestratorMarkers are used to detect if SDD content was already injected
+// (e.g., via a persona file or a previous SDD injection). Keep legacy and
+// current headings to remain backward compatible across upstream syncs.
+var sddOrchestratorMarkers = []string{
+	"## Agent Teams Orchestrator",
+	"## Spec-Driven Development (SDD) Orchestrator",
+	"## Spec-Driven Development (SDD)",
+}
+
+func hasSDDOrchestrator(content string) bool {
+	for _, marker := range sddOrchestratorMarkers {
+		if strings.Contains(content, marker) {
+			return true
+		}
+	}
+	return false
+}
 
 func injectFileAppend(homeDir string, adapter agents.Adapter) (InjectionResult, error) {
 	promptPath := adapter.SystemPromptFile(homeDir)
@@ -216,7 +230,7 @@ func injectFileAppend(homeDir string, adapter agents.Adapter) (InjectionResult, 
 
 	// If the SDD orchestrator section is already present (e.g., from the
 	// gentleman persona asset which includes it), skip to avoid duplication.
-	if strings.Contains(existing, sddOrchestratorMarker) {
+	if hasSDDOrchestrator(existing) {
 		return InjectionResult{Files: []string{promptPath}}, nil
 	}
 
